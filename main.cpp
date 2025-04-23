@@ -8,22 +8,7 @@
 #include <string.h>
 
 using namespace std;
-const int maxIter = 50;
-
-void saveAsPNG(const char *name, SDL_Renderer *renderer, SDL_Texture *texture) {
-
-  SDL_Texture *target = SDL_GetRenderTarget(renderer);
-  SDL_SetRenderTarget(renderer, texture);
-  int width, height;
-  SDL_QueryTexture(texture, NULL, NULL, &width, &height);
-  SDL_Surface *surface = SDL_CreateRGBSurface(0, width, height, 32, 0, 0, 0, 0);
-  SDL_RenderReadPixels(renderer, NULL, surface->format->format, surface->pixels,
-                       surface->pitch);
-  IMG_SavePNG(surface, name);
-  SDL_FreeSurface(surface);
-  SDL_SetRenderTarget(renderer, target);
-  cout << "Saved" << endl;
-}
+const int maxIter = 100;
 
 float MandelBrot(complex<double> c) {
   int i = 0;
@@ -52,27 +37,27 @@ int main() {
 
   // Generation of MandelBrot set
   int pixelSize = 1;
-  int a = -2;
-  int b = 2;
-  float step = 0.001;
+  float a = -1;
+  float b = 1;
+  float step = 0.0005;
   int W = 1000;
   int H = 1000;
-  int w = (b - a) / 0.001;
+  int w = (b - a) / step;
   int h = w;
   float scale = 1.0;
   uint32_t *pixels = new uint32_t[w * h];
 
   complex<double> c(-0.7, 0.27015);
 
-  for (float i = a; i <= b; i += step) {
-    for (float j = a; j <= b; j += step) {
-      // cout << i << " " << j << endl;
-      complex<double> z(i, j);
-      float iter = Julia(c, z);
-      int X = (i - a) / (b - a) * h;
-      int Y = (j - a) / (b - a) * w;
-      int grad = iter * 5.1;
-      pixels[X + Y * w] =
+  for (int i = 0; i < h; i++) {
+    float y = a + i * step;
+    for (int j = 0; j < w; j++) {
+      float x = a + j * step;
+      complex<float> z(x, y);
+      float iter = Julia(c, z) / maxIter;
+      int grad = int(iter * 256.0);
+      // cout << j + i * w << " " << i << " " << j << endl;
+      pixels[j + i * w] =
           (0xFF) | (int(grad) << 8) | (int(grad) << 16) | (int(grad) << 24);
     }
   }
@@ -106,7 +91,6 @@ int main() {
   SDL_UpdateTexture(texture, NULL, pixels, w * sizeof(Uint32));
   // SDL_Rect src_Rect{1500, 1500, 1000, 1000};
 
-  saveAsPNG("Julia.png", renderer, texture);
   SDL_Rect src_Rect{int((w / 2) - scale * w / 2), int((h / 2) - scale * h / 2),
                     w, h};
   SDL_Rect dest_Rect{0, 0, W, H};
@@ -126,7 +110,7 @@ int main() {
         switch (ev.key.keysym.sym) {
         case SDLK_i: {
           cout << "in";
-          scale -= 0.1;
+          scale -= 0.005;
           scale = scale < 0 ? 0 : scale;
           break;
         }
@@ -171,27 +155,29 @@ int main() {
     int cy = int((h / 2) - scale * h / 2);
     src_Rect.x = cx;
     src_Rect.y = cy;
-    src_Rect.w = w * scale;
-    src_Rect.h = h * scale;
+    src_Rect.w = int(w * scale);
+    src_Rect.h = int(h * scale);
 
+    // Apply panning
     src_Rect.x -= x_offset;
     src_Rect.y -= y_offset;
 
+    // Ensure that the source rectangle doesn't exceed the image's bounds
     if (src_Rect.x < 0) {
       src_Rect.x = 0;
     } else if (src_Rect.x > (w - src_Rect.w)) {
       src_Rect.x = w - src_Rect.w;
     }
+
     if (src_Rect.y < 0) {
       src_Rect.y = 0;
-    } else if (src_Rect.y > (h - src_Rect.y)) {
-      src_Rect.h = w - src_Rect.h;
+    } else if (src_Rect.y > (h - src_Rect.h)) {
+      src_Rect.y = h - src_Rect.h;
     }
 
+    // Make sure the offsets are relative to the center of the rectangle
     x_offset = cx - src_Rect.x;
     y_offset = cy - src_Rect.y;
-
-    cout << src_Rect.x << " " << src_Rect.y << endl;
 
     SDL_RenderClear(renderer);
     SDL_RenderCopy(renderer, texture, &src_Rect, &dest_Rect);
