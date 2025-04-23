@@ -8,7 +8,7 @@
 #include <string.h>
 
 using namespace std;
-const int maxIter = 100;
+const int maxIter = 500;
 
 float MandelBrot(complex<double> c) {
   int i = 0;
@@ -54,8 +54,11 @@ int main() {
     for (int j = 0; j < w; j++) {
       float x = a + j * step;
       complex<float> z(x, y);
-      float iter = Julia(c, z) / maxIter;
-      int grad = int(iter * 256.0);
+      // float iter = Julia(c, z);
+      float iter = MandelBrot(z);
+      // float norm = Julia(c, z) / float(maxIter); // Linear Scaling
+      float norm = pow(iter / float(maxIter), 0.6f); // Gamm Scaling
+      int grad = int(norm * 255.0f);
       // cout << j + i * w << " " << i << " " << j << endl;
       pixels[j + i * w] =
           (0xFF) | (int(grad) << 8) | (int(grad) << 16) | (int(grad) << 24);
