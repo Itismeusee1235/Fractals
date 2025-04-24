@@ -224,6 +224,8 @@ __global__ void BurningShip(uint32_t *pixels, int maxIter, int d_w, int d_h,
 }
 void runFractal(uint32_t *pixels, int maxIter, int d_w, int d_h, double c_x,
                 double c_y, double step, int type) {
+
+  printf("Starting");
   uint32_t *d_pixels;
   cudaMalloc(&d_pixels, d_w * d_h * sizeof(uint32_t));
   dim3 blockDim(16, 16); // Define the block size
