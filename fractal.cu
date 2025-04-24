@@ -45,7 +45,6 @@ __global__ void CalculateJulia2(uint32_t *pixels, int maxIter, int d_w, int d_h,
   int j = blockIdx.y * blockDim.y + threadIdx.y; // origin is bottom left on gpu
 
   if (i >= d_w || j >= d_h) {
-    // printf("Exceeded\n");
     return;
   }
 
@@ -57,11 +56,9 @@ __global__ void CalculateJulia2(uint32_t *pixels, int maxIter, int d_w, int d_h,
 
   int iters = 0;
   while (iters < maxIter && thrust::norm(z) < 4) {
-    z = z * z * z + c;
-    // printf(">%f, %f, %d\n", x, y, iters);
+    z = z * z * z * z + c;
     iters++;
   }
-  // printf("%d\n", iters);
   int p_i = i;
   int p_j = d_h - j - 1;
 
@@ -84,7 +81,6 @@ __global__ void CalculateJulia1(uint32_t *pixels, int maxIter, int d_w, int d_h,
   int j = blockIdx.y * blockDim.y + threadIdx.y; // origin is bottom left on gpu
 
   if (i >= d_w || j >= d_h) {
-    // printf("Exceeded\n");
     return;
   }
 
@@ -95,12 +91,10 @@ __global__ void CalculateJulia1(uint32_t *pixels, int maxIter, int d_w, int d_h,
   thrust::complex<double> z(x, y);
 
   int iters = 0;
-  while (iters < maxIter && thrust::norm(z) < 4) {
+  while (iters < maxIter && thrust::norm(z) < 1000) {
     z = z * z + c;
-    // printf(">%f, %f, %d\n", x, y, iters);
     iters++;
   }
-  // printf("%d\n", iters);
   int p_i = i;
   int p_j = d_h - j - 1;
 
@@ -124,7 +118,6 @@ __global__ void CalculateMandelBrot(uint32_t *pixels, int maxIter, int d_w,
   int j = blockIdx.y * blockDim.y + threadIdx.y; // origin is bottom left on gpu
 
   if (i >= d_w || j >= d_h) {
-    // printf("> %d, %d\n%  d, %d\n", i, d_w, j, d_h);
     return;
   }
 
@@ -135,12 +128,10 @@ __global__ void CalculateMandelBrot(uint32_t *pixels, int maxIter, int d_w,
   thrust::complex<double> z(0, 0);
 
   int iters = 0;
-  while (iters < maxIter && thrust::norm(z) < 4) {
+  while (iters < maxIter && thrust::norm(z) < 1000) {
     z = z * z + c;
-    // printf(">%f, %f, %d\n", x, y, iters);
     iters++;
   }
-  // printf("%d\n", iters);
   int p_i = i;
   int p_j = d_h - j - 1;
 
@@ -157,6 +148,80 @@ __global__ void CalculateMandelBrot(uint32_t *pixels, int maxIter, int d_w,
   pixels[p_i + p_j * d_w] = (0xFF << 24) | (blue << 16) | (green << 8) | red;
 }
 
+__global__ void CalculateTricon(uint32_t *pixels, int maxIter, int d_w, int d_h,
+                                double c_x, double c_y, double step) {
+  int i = blockIdx.x * blockDim.x + threadIdx.x; // origin is bottom left on gpu
+  int j = blockIdx.y * blockDim.y + threadIdx.y; // origin is bottom left on gpu
+
+  if (i >= d_w || j >= d_h) {
+    return;
+  }
+
+  double x = (i - d_w / 2) * 1.0f * step + c_x;
+  double y = (j - d_h / 2) * 1.0f * step + c_y;
+
+  thrust::complex<double> c(x, y);
+  thrust::complex<double> z(0, 0);
+
+  int iters = 0;
+  while (iters < maxIter && thrust::norm(z) < 1000) {
+    z = thrust::conj(z) * thrust::conj(z) + c;
+    iters++;
+  }
+  int p_i = i;
+  int p_j = d_h - j - 1;
+
+  double mod = sqrtf(thrust::norm(z));
+  double smooth_iter = double(iters) - log2(max(1.0f, log2(mod)));
+  double norm_iter = pow(smooth_iter / double((maxIter)), 0.6f);
+  int grad = int(norm_iter * 255.0f);
+
+  int red = (grad * 2) % 256;
+  int green = (grad * 5) % 256;
+  int blue = (grad * 8) % 256;
+
+  // Store the RGBA color in the pixel array
+  pixels[p_i + p_j * d_w] = (0xFF << 24) | (blue << 16) | (green << 8) | red;
+}
+
+__global__ void BurningShip(uint32_t *pixels, int maxIter, int d_w, int d_h,
+                            double c_x, double c_y, double step) {
+  int i = blockIdx.x * blockDim.x + threadIdx.x;
+  int j = blockIdx.y * blockDim.y + threadIdx.y;
+
+  if (i >= d_w || j >= d_h)
+    return;
+
+  double x = (i - d_w / 2) * step + c_x;
+  double y = (j - d_h / 2) * step + c_y;
+
+  thrust::complex<double> c(x, y);
+  thrust::complex<double> z(0, 0);
+
+  int iters = 0;
+  while (iters < maxIter && thrust::norm(z) < 1000.0) {
+    // Apply abs to real and imag parts
+    double zr = fabs(z.real());
+    double zi = fabs(z.imag());
+    z = thrust::complex<double>(zr, zi);
+    z = z * z + c;
+    iters++;
+  }
+
+  int p_i = i;
+  int p_j = d_h - j - 1; // flip vertically
+
+  double mod = thrust::abs(z);
+  double smooth_iter = double(iters) - log2(fmax(1.0, log2(mod)));
+  double norm_iter = pow(smooth_iter / double(maxIter), 0.6);
+  int grad = int(norm_iter * 255.0);
+
+  int red = (grad * 3) % 256;
+  int green = (grad * 2) % 256;
+  int blue = (grad * 6) % 256;
+
+  pixels[p_i + p_j * d_w] = (0x0F << 24) | (blue << 16) | (green << 8) | red;
+}
 void runFractal(uint32_t *pixels, int maxIter, int d_w, int d_h, double c_x,
                 double c_y, double step, int type) {
   uint32_t *d_pixels;
@@ -182,6 +247,16 @@ void runFractal(uint32_t *pixels, int maxIter, int d_w, int d_h, double c_x,
 
     CalculateJulia2<<<gridDim, blockDim>>>(d_pixels, maxIter, d_w, d_h, c_x,
                                            c_y, step);
+    break;
+  }
+  case 3: {
+    CalculateTricon<<<gridDim, blockDim>>>(d_pixels, maxIter, d_w, d_h, c_x,
+                                           c_y, step);
+    break;
+  }
+  case 4: {
+    BurningShip<<<gridDim, blockDim>>>(d_pixels, maxIter, d_w, d_h, c_x, c_y,
+                                       step);
     break;
   }
   }

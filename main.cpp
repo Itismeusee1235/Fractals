@@ -71,16 +71,6 @@ int main() {
         quit = true;
       } else if (ev.type == SDL_KEYDOWN) {
         switch (ev.key.keysym.sym) {
-        case SDLK_i: {
-          step = 99.001 * step / 100;
-          draw = true;
-          break;
-        }
-        case SDLK_o: {
-          step = 100.999 * step / 100;
-          draw = true;
-          break;
-        }
         case SDLK_LEFT: {
           c_x -= step * 10;
           draw = true;
@@ -110,7 +100,7 @@ int main() {
           break;
         }
         case SDLK_TAB: {
-          set = (set + 1) % 3;
+          set = (set + 1) % 5;
           c_x = 0;
           c_y = 0;
           step = 0.001;
