@@ -12,8 +12,8 @@ int main() {
 
   // Generation of MandelBrot set
   int pixelSize = 1;
-  int W = 700;
-  int H = 700;
+  int W = 1000;
+  int H = 1000;
 
   double c_x = 0;
   double c_y = 0;
