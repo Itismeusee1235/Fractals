@@ -6,8 +6,10 @@
 #include <iostream>
 #include <stdint.h>
 
+using namespace std;
+
 bool GUI::GUI_Initialize(char *name, int width, int height) {
-  printf("Initializing\n");
+  // printf("Initializing\n");
   GUI::width = width;
   GUI::height = height;
   rect = SDL_Rect{0, 0, width, height};
@@ -34,21 +36,21 @@ bool GUI::GUI_Initialize(char *name, int width, int height) {
   if (texture == NULL) {
     printf("Failed to create texture, %s ,", SDL_GetError());
   }
-  printf("Done initia;ize:");
+  // printf("Done initia;ize:");
   return true;
 }
 
 void GUI::GUI_render() {
-  printf("Rendering\n");
+  // printf("Rendering\n");
   SDL_SetRenderDrawColor(renderer, 0x0, 0x0, 0x0, 0xFF);
   SDL_RenderCopy(renderer, texture, &rect, &rect);
   SDL_RenderPresent(renderer);
 }
 
 void GUI::GUI_WriteTexture(uint32_t *pixels) {
-  printf("Writing texture\n");
+  // printf("Writing texture\n");
   SDL_UpdateTexture(texture, &rect, pixels, sizeof(uint32_t) * width);
-  printf("Done Writing\n");
+  // printf("Done Writing\n");
 }
 
 void GUI::GUI_eventHandler(bool &quit, bool &draw, double &c_x, double &c_y,
@@ -56,7 +58,7 @@ void GUI::GUI_eventHandler(bool &quit, bool &draw, double &c_x, double &c_y,
   SDL_Event ev;
   int m_x, m_y;
   SDL_GetMouseState(&m_x, &m_y);
-  printf("Handling event\n");
+  // printf("Handling event\n");
 
   while (SDL_PollEvent(&ev)) {
     if (ev.type == SDL_QUIT) {
@@ -78,6 +80,14 @@ void GUI::GUI_eventHandler(bool &quit, bool &draw, double &c_x, double &c_y,
       c_y += y_b - y_a;
 
       draw = true;
+    } else if (ev.type == SDL_MOUSEMOTION) {
+      if (ev.motion.state & SDL_BUTTON_MIDDLE) {
+        int x = ev.motion.xrel;
+        int y = ev.motion.yrel;
+        c_x -= x * step;
+        c_y += y * step;
+        draw = true;
+      }
     } else if (ev.type == SDL_KEYDOWN) {
       if (ev.key.keysym.sym == SDLK_q) {
         quit = true;
@@ -96,6 +106,8 @@ void GUI::GUI_eventHandler(bool &quit, bool &draw, double &c_x, double &c_y,
 }
 
 GUI::~GUI() {
+
+  using namespace std;
   SDL_DestroyWindow(window);
   SDL_DestroyRenderer(renderer);
   SDL_DestroyTexture(texture);

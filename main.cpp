@@ -12,8 +12,8 @@ int main() {
 
   // Generation of MandelBrot set
   int pixelSize = 1;
-  int W = 1000;
-  int H = 1000;
+  int W = 700;
+  int H = 700;
 
   double c_x = 0;
   double c_y = 0;
@@ -34,7 +34,6 @@ int main() {
     gui.GUI_eventHandler(quit, draw, c_x, c_y, step, set);
     if (draw) {
       runFractal(pixels, maxIter, W, H, c_x, c_y, step, set);
-      printf("Generated");
       gui.GUI_WriteTexture(pixels);
       draw = false;
     }
